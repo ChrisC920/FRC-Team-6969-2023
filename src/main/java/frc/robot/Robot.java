@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
+import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 public class Robot extends TimedRobot {
@@ -91,6 +92,9 @@ public class Robot extends TimedRobot {
     m_leftStick = new Joystick(0);
     m_rightStick = new Joystick(1);
 
+    arm_encoder.setPosition(0);
+    grabber_encoder.setPosition(0);
+
     // Gyro bullshit
     try {
       ahrs = new AHRS(SPI.Port.kMXP);
@@ -153,16 +157,60 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    if (arm_encoder.getPosition() < 205 && m_leftStick.getTriggerPressed())
-      m_arm.set(0.25);
-    else if (arm_encoder.getPosition() > -2.264 && m_rightStick.getTriggerPressed())
-      m_arm.set(-0.25);
-    else if (m_leftStick.getTriggerReleased() || m_rightStick.getTriggerReleased()) {
-      // m_arm.set(arm_encoder.getVelocity());
+
+    // Left stick movement
+    if (arm_encoder.getPosition() < 206 && m_rightStick.getTrigger()) {
+      try {
+        m_arm.setIdleMode(IdleMode.kCoast);
+      } catch (Exception e) {
+        DriverStation.reportError("Error in coast mode", true);
+      }
+      m_arm.set(0.3);
+    }
+    // Right Stick movement
+    else if (arm_encoder.getPosition() > 8 && m_leftStick.getTrigger()) {
+      try {
+        m_arm.setIdleMode(IdleMode.kCoast);
+      } catch (Exception e) {
+        DriverStation.reportError("Error in coast mode", true);
+      }
+      m_arm.set(-0.3);
+    } else {
       m_arm.set(0);
+      try {
+        m_arm.setIdleMode(IdleMode.kBrake);
+      } catch (Exception e) {
+        DriverStation.reportError("Error in brake mode", true);
+      }
     }
 
-    // m_grabber.set(m_rightStick.getY());
+    // grabber
+    if (grabber_encoder.getPosition() > -100 && m_rightStick.getRawButton(3)) {
+      try {
+        m_grabber.setIdleMode(IdleMode.kCoast);
+      } catch (Exception e) {
+        DriverStation.reportError("Error in coast mode", true);
+      }
+      m_grabber.set(-0.35);
+    }
+    // Right Stick movement
+    else if (grabber_encoder.getPosition() < 2 && m_rightStick.getRawButton(4)) {
+      try {
+        m_grabber.setIdleMode(IdleMode.kCoast);
+      } catch (Exception e) {
+        DriverStation.reportError("Error in coast mode", true);
+      }
+      m_grabber.set(0.35);
+    } else {
+      m_grabber.set(0);
+      try {
+        m_grabber.setIdleMode(IdleMode.kBrake);
+      } catch (Exception e) {
+        DriverStation.reportError("Error in brake mode", true);
+      }
+    }
+
+    m_myRobot.arcadeDrive(-m_leftStick.getY(), m_rightStick.getX());
     SmartDashboard.putNumber("Arm Position", arm_encoder.getPosition());
     SmartDashboard.putNumber("Grabber Position", grabber_encoder.getPosition());
     SmartDashboard.putNumber("Arm Velocity ", arm_encoder.getVelocity());
