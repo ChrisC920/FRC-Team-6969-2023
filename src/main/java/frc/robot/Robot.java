@@ -14,50 +14,63 @@ import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 public class Robot extends TimedRobot {
+  // Joysticks
   private Joystick m_leftStick;
   private Joystick m_rightStick;
-
-  // drive train
+  
+  // Drive Train Variables
   private static final int leftDeviceID1 = 1;
   private static final int leftDeviceID2 = 2;
   private static final int rightDeviceID1 = 3;
   private static final int rightDeviceID2 = 4;
-  private static final int armDeviceID = 5;
-  private static final int grabberDeviceID = 6;
   private CANSparkMax m_leftMotor1;
   private CANSparkMax m_leftMotor2;
   private CANSparkMax m_rightMotor1;
   private CANSparkMax m_rightMotor2;
-
-  // arm/grabber
+  
+  // Arm
   private CANSparkMax m_arm;
-  private CANSparkMax m_grabber;
   private RelativeEncoder arm_encoder;
+  private static final int armDeviceID = 5;
+  
+  // Grabber
+  private CANSparkMax m_grabber;
   private RelativeEncoder grabber_encoder;
-
-  // gyro
-  AHRS ahrs;
-  double kP = 1;
-  boolean autoBalanceXMode;
-  boolean autoBalanceYMode;
+  private static final int grabberDeviceID = 6;
+  
+  // Gyro
+  private AHRS ahrs;
+  private double kP = 1;
+  private boolean autoBalanceXMode;
+  private boolean autoBalanceYMode;
+  static final double kOffBalanceAngleThresholdDegrees = 10;
+  static final double kOonBalanceAngleThresholdDegrees = 5;
+  
   private DifferentialDrive m_myRobot;
-
-  // func variables
-  private int armCount = 0;
 
   @Override
   public void robotInit() {
-    // left side drive train motor group
+    // Left side drive train motor group
     m_leftMotor1 = new CANSparkMax(leftDeviceID1, MotorType.kBrushed);
     m_leftMotor2 = new CANSparkMax(leftDeviceID2, MotorType.kBrushed);
     MotorControllerGroup m_left = new MotorControllerGroup(m_leftMotor1, m_leftMotor2);
 
-    // right side drive train motor group
+    // Right side drive train motor group
     m_rightMotor1 = new CANSparkMax(rightDeviceID1, MotorType.kBrushed);
     m_rightMotor2 = new CANSparkMax(rightDeviceID2, MotorType.kBrushed);
     MotorControllerGroup m_right = new MotorControllerGroup(m_rightMotor1, m_rightMotor2);
 
-    // reset factory defauts just in case
+    // Arm
+    m_arm = new CANSparkMax(armDeviceID, MotorType.kBrushless);
+    arm_encoder = m_arm.getEncoder();
+    // arm_encoder.setPositionConversionFactor(360);
+    
+    // Grabber
+    m_grabber = new CANSparkMax(grabberDeviceID, MotorType.kBrushless);
+    grabber_encoder = m_grabber.getEncoder();
+    // grabber_encoder.setPositionConversionFactor(360);
+
+    // Reset factory defauts just in case
     m_leftMotor1.restoreFactoryDefaults();
     m_leftMotor2.restoreFactoryDefaults();
     m_rightMotor1.restoreFactoryDefaults();
@@ -65,25 +78,19 @@ public class Robot extends TimedRobot {
     m_arm.restoreFactoryDefaults();
     m_grabber.restoreFactoryDefaults();
 
-    // encoders
-    arm_encoder = m_arm.getEncoder();
-    arm_encoder.setPositionConversionFactor(360);
-    grabber_encoder = m_grabber.getEncoder();
-    grabber_encoder.setPositionConversionFactor(360);
-
-    // inversions as neccessary
+    // Inversions as neccessary
     m_rightMotor1.setInverted(true);
     m_rightMotor2.setInverted(true);
 
-    // setting drive train
+    // Setting drive train
     m_myRobot = new DifferentialDrive(m_left, m_right);
     m_myRobot.setExpiration(0.1);
 
-    // joysticks
+    // Joysticks
     m_leftStick = new Joystick(0);
     m_rightStick = new Joystick(1);
 
-    // gyro bullshit
+    // Gyro bullshit
     try {
       ahrs = new AHRS(SPI.Port.kMXP);
     } catch (RuntimeException ex) {
@@ -92,8 +99,6 @@ public class Robot extends TimedRobot {
 
   }
 
-  static final double kOffBalanceAngleThresholdDegrees = 10;
-  static final double kOonBalanceAngleThresholdDegrees = 5;
 
   @Override
   public void autonomousInit() {
@@ -149,10 +154,11 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     m_myRobot.arcadeDrive(m_leftStick.getY(), m_rightStick.getX());
-    if (m_rightStick.getTriggerPressed() && arm_encoder.getPosition() <= 30) {
-      arm_encoder.setPosition(arm_encoder.getPosition() + 1);
-    } else if (m_leftStick.getTriggerPressed() && arm_encoder.getPosition() >= -30) {
-      arm_encoder.setPosition(arm_encoder.getPosition() - 1);
+    if (m_rightStick.getTriggerPressed() && arm_encoder.getPosition() <= 1) {
+    arm_encoder.setPosition(arm_encoder.getPosition() + .05);
+    } else if (m_leftStick.getTriggerPressed() && arm_encoder.getPosition() >=
+    -1) {
+    arm_encoder.setPosition(arm_encoder.getPosition() - .05);
     }
   }
 }
