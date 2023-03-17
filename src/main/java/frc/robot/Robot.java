@@ -8,6 +8,7 @@ import com.kauailabs.navx.frc.AHRS;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.drive.MecanumDrive;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
@@ -17,7 +18,7 @@ public class Robot extends TimedRobot {
   // Joysticks
   private Joystick m_leftStick;
   private Joystick m_rightStick;
-  
+
   // Drive Train Variables
   private static final int leftDeviceID1 = 1;
   private static final int leftDeviceID2 = 2;
@@ -27,17 +28,17 @@ public class Robot extends TimedRobot {
   private CANSparkMax m_leftMotor2;
   private CANSparkMax m_rightMotor1;
   private CANSparkMax m_rightMotor2;
-  
+
   // Arm
   private CANSparkMax m_arm;
   private RelativeEncoder arm_encoder;
   private static final int armDeviceID = 5;
-  
+
   // Grabber
   private CANSparkMax m_grabber;
   private RelativeEncoder grabber_encoder;
   private static final int grabberDeviceID = 6;
-  
+
   // Gyro
   private AHRS ahrs;
   private double kP = 1;
@@ -45,7 +46,7 @@ public class Robot extends TimedRobot {
   private boolean autoBalanceYMode;
   static final double kOffBalanceAngleThresholdDegrees = 10;
   static final double kOonBalanceAngleThresholdDegrees = 5;
-  
+
   private DifferentialDrive m_myRobot;
 
   @Override
@@ -64,7 +65,7 @@ public class Robot extends TimedRobot {
     m_arm = new CANSparkMax(armDeviceID, MotorType.kBrushless);
     arm_encoder = m_arm.getEncoder();
     // arm_encoder.setPositionConversionFactor(360);
-    
+
     // Grabber
     m_grabber = new CANSparkMax(grabberDeviceID, MotorType.kBrushless);
     grabber_encoder = m_grabber.getEncoder();
@@ -98,7 +99,6 @@ public class Robot extends TimedRobot {
     }
 
   }
-
 
   @Override
   public void autonomousInit() {
@@ -153,12 +153,19 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    m_myRobot.arcadeDrive(m_leftStick.getY(), m_rightStick.getX());
-    if (m_rightStick.getTriggerPressed() && arm_encoder.getPosition() <= 1) {
-    arm_encoder.setPosition(arm_encoder.getPosition() + .05);
-    } else if (m_leftStick.getTriggerPressed() && arm_encoder.getPosition() >=
-    -1) {
-    arm_encoder.setPosition(arm_encoder.getPosition() - .05);
+    if (arm_encoder.getPosition() < 205 && m_leftStick.getTriggerPressed())
+      m_arm.set(0.25);
+    else if (arm_encoder.getPosition() > -2.264 && m_rightStick.getTriggerPressed())
+      m_arm.set(-0.25);
+    else if (m_leftStick.getTriggerReleased() || m_rightStick.getTriggerReleased()) {
+      // m_arm.set(arm_encoder.getVelocity());
+      m_arm.set(0);
     }
+
+    // m_grabber.set(m_rightStick.getY());
+    SmartDashboard.putNumber("Arm Position", arm_encoder.getPosition());
+    SmartDashboard.putNumber("Grabber Position", grabber_encoder.getPosition());
+    SmartDashboard.putNumber("Arm Velocity ", arm_encoder.getVelocity());
+
   }
 }
