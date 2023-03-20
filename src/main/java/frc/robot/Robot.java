@@ -2,6 +2,7 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import com.kauailabs.navx.frc.AHRS;
@@ -47,8 +48,12 @@ public class Robot extends TimedRobot {
   private boolean autoBalanceYMode;
   static final double kOffBalanceAngleThresholdDegrees = 10;
   static final double kOonBalanceAngleThresholdDegrees = 5;
+  private boolean hasStartedGyro = false;
 
   private DifferentialDrive m_myRobot;
+  private MecanumDrive m_myRobot2;
+
+  private final Timer m_timer = new Timer();
 
   @Override
   public void robotInit() {
@@ -65,12 +70,10 @@ public class Robot extends TimedRobot {
     // Arm
     m_arm = new CANSparkMax(armDeviceID, MotorType.kBrushless);
     arm_encoder = m_arm.getEncoder();
-    // arm_encoder.setPositionConversionFactor(360);
 
     // Grabber
     m_grabber = new CANSparkMax(grabberDeviceID, MotorType.kBrushless);
     grabber_encoder = m_grabber.getEncoder();
-    // grabber_encoder.setPositionConversionFactor(360);
 
     // Reset factory defauts just in case
     m_leftMotor1.restoreFactoryDefaults();
@@ -86,7 +89,9 @@ public class Robot extends TimedRobot {
 
     // Setting drive train
     m_myRobot = new DifferentialDrive(m_left, m_right);
+    m_myRobot2 = new MecanumDrive(m_leftMotor1, m_leftMotor2, m_rightMotor1, m_rightMotor2);
     m_myRobot.setExpiration(0.1);
+    m_myRobot2.setExpiration(0.1);
 
     // Joysticks
     m_leftStick = new Joystick(0);
@@ -95,7 +100,7 @@ public class Robot extends TimedRobot {
     arm_encoder.setPosition(0);
     grabber_encoder.setPosition(0);
 
-    // Gyro bullshit
+    // Gyro
     try {
       ahrs = new AHRS(SPI.Port.kMXP);
     } catch (RuntimeException ex) {
@@ -106,83 +111,96 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-    // m_myRobot = new MecanumDrive(m_leftMotor1, m_leftMotor2, m_rightMotor1,
-    // m_rightMotor2);
-
+    m_timer.reset();
+    m_timer.start();
   }
 
   @Override
   public void autonomousPeriodic() {
-    // double xAxisRate = m_leftStick.getX();
-    // double yAxisRate = m_leftStick.getY();
-    // double pitchAngleDegrees = ahrs.getPitch();
-    // double rollAngleDegrees = ahrs.getRoll();
-
-    // if (!autoBalanceXMode && (Math.abs(pitchAngleDegrees) >=
-    // Math.abs(kOffBalanceAngleThresholdDegrees))) {
-    // autoBalanceXMode = true;
-    // } else if (autoBalanceXMode && (Math.abs(pitchAngleDegrees) <=
-    // Math.abs(kOonBalanceAngleThresholdDegrees))) {
-    // autoBalanceXMode = false;
-    // }
-    // if (!autoBalanceYMode && (Math.abs(pitchAngleDegrees) >=
-    // Math.abs(kOffBalanceAngleThresholdDegrees))) {
-    // autoBalanceYMode = true;
-    // } else if (autoBalanceYMode && (Math.abs(pitchAngleDegrees) <=
-    // Math.abs(kOonBalanceAngleThresholdDegrees))) {
-    // autoBalanceYMode = false;
-    // }
-
-    // // Control drive system automatically,
-    // // driving in reverse direction of pitch/roll angle,
-    // // with a magnitude based upon the angle
-
-    // if (autoBalanceXMode) {
-    // double pitchAngleRadians = pitchAngleDegrees * (Math.PI / 180.0);
-    // xAxisRate = Math.sin(pitchAngleRadians) * -1;
-    // }
-    // if (autoBalanceYMode) {
-    // double rollAngleRadians = rollAngleDegrees * (Math.PI / 180.0);
-    // yAxisRate = Math.sin(rollAngleRadians) * -1;
-    // }
-
-    // try {
-    // m_myRobot.driveCartesian(xAxisRate, yAxisRate, m_leftStick.getTwist(),
-    // ahrs.getRotation2d());
-    // } catch (RuntimeException ex) {
-    // String err_string = "Drive system error: " + ex.getMessage();
-    // DriverStation.reportError(err_string, true);
-    // }
+    if (m_timer.get() < 3) {
+      m_myRobot.arcadeDrive(0.2, 0);
+    }
+    /*
+     * double xAxisRate = 0;
+     * double yAxisRate = 0;
+     * double rollAngleDegrees = ahrs.getPitch();
+     * double pitchAngleDegrees = ahrs.getRoll();
+     * 
+     * if (!hasStartedGyro) {
+     * m_myRobot2.driveCartesian(0.9, 0, 0);
+     * if (pitchAngleDegrees <= -6) {
+     * hasStartedGyro = true;
+     * }
+     * } else {
+     * if (!autoBalanceXMode && (Math.abs(pitchAngleDegrees) >=
+     * Math.abs(kOffBalanceAngleThresholdDegrees))) {
+     * autoBalanceXMode = true;
+     * } else if (autoBalanceXMode && (Math.abs(pitchAngleDegrees) <=
+     * Math.abs(kOonBalanceAngleThresholdDegrees))) {
+     * autoBalanceXMode = false;
+     * }
+     * if (!autoBalanceYMode && (Math.abs(pitchAngleDegrees) >=
+     * Math.abs(kOffBalanceAngleThresholdDegrees))) {
+     * autoBalanceYMode = true;
+     * } else if (autoBalanceYMode && (Math.abs(pitchAngleDegrees) <=
+     * Math.abs(kOonBalanceAngleThresholdDegrees))) {
+     * autoBalanceYMode = false;
+     * }
+     * 
+     * // Control drive system automatically,
+     * // driving in reverse direction of pitch/roll angle,
+     * // with a magnitude based upon the angle
+     * 
+     * if (autoBalanceXMode) {
+     * double pitchAngleRadians = pitchAngleDegrees * (Math.PI / 180.0);
+     * xAxisRate = Math.sin(pitchAngleRadians) * -1;
+     * }
+     * if (autoBalanceYMode) {
+     * double rollAngleRadians = rollAngleDegrees * (Math.PI / 180.0);
+     * yAxisRate = Math.sin(rollAngleRadians) * -1;
+     * }
+     * 
+     * try {
+     * m_myRobot2.driveCartesian(-xAxisRate, -yAxisRate, 0,
+     * ahrs.getRotation2d());
+     * } catch (RuntimeException ex) {
+     * String err_string = "Drive system error: " + ex.getMessage();
+     * DriverStation.reportError(err_string, true);
+     * }
+     * 
+     * }
+     * SmartDashboard.putNumber("X", pitchAngleDegrees);
+     */
   }
 
   @Override
   public void teleopPeriodic() {
 
-    // Left stick movement
-    if (arm_encoder.getPosition() < 206 && m_rightStick.getTrigger()) {
-      try {
-        m_arm.setIdleMode(IdleMode.kCoast);
-      } catch (Exception e) {
-        DriverStation.reportError("Error in coast mode", true);
-      }
-      m_arm.set(0.3);
-    }
-    // Right Stick movement
-    else if (arm_encoder.getPosition() > 8 && m_leftStick.getTrigger()) {
-      try {
-        m_arm.setIdleMode(IdleMode.kCoast);
-      } catch (Exception e) {
-        DriverStation.reportError("Error in coast mode", true);
-      }
-      m_arm.set(-0.3);
-    } else {
-      m_arm.set(0);
-      try {
-        m_arm.setIdleMode(IdleMode.kBrake);
-      } catch (Exception e) {
-        DriverStation.reportError("Error in brake mode", true);
-      }
-    }
+    // // Left stick movement
+    // if (arm_encoder.getPosition() < 206 && m_rightStick.getTrigger()) {
+    // try {
+    // m_arm.setIdleMode(IdleMode.kCoast);
+    // } catch (Exception e) {
+    // DriverStation.reportError("Error in coast mode", true);
+    // }
+    // m_arm.set(0.25);
+    // }
+    // // Right Stick movement
+    // else if (arm_encoder.getPosition() > 10 && m_leftStick.getTrigger()) {
+    // try {
+    // m_arm.setIdleMode(IdleMode.kCoast);
+    // } catch (Exception e) {
+    // DriverStation.reportError("Error in coast mode", true);
+    // }
+    // m_arm.set(-0.25);
+    // } else {
+    // m_arm.set(0);
+    // try {
+    // m_arm.setIdleMode(IdleMode.kBrake);
+    // } catch (Exception e) {
+    // DriverStation.reportError("Error in brake mode", true);
+    // }
+    // }
 
     // grabber
     if (grabber_encoder.getPosition() > -100 && m_rightStick.getRawButton(3)) {
@@ -191,16 +209,16 @@ public class Robot extends TimedRobot {
       } catch (Exception e) {
         DriverStation.reportError("Error in coast mode", true);
       }
-      m_grabber.set(-0.35);
+      m_grabber.set(-0.4);
     }
     // Right Stick movement
-    else if (grabber_encoder.getPosition() < 2 && m_rightStick.getRawButton(4)) {
+    else if (grabber_encoder.getPosition() < 2 && m_rightStick.getRawButton(5)) {
       try {
         m_grabber.setIdleMode(IdleMode.kCoast);
       } catch (Exception e) {
         DriverStation.reportError("Error in coast mode", true);
       }
-      m_grabber.set(0.35);
+      m_grabber.set(0.4);
     } else {
       m_grabber.set(0);
       try {
@@ -210,10 +228,27 @@ public class Robot extends TimedRobot {
       }
     }
 
-    m_myRobot.arcadeDrive(-m_leftStick.getY(), m_rightStick.getX());
-    SmartDashboard.putNumber("Arm Position", arm_encoder.getPosition());
-    SmartDashboard.putNumber("Grabber Position", grabber_encoder.getPosition());
-    SmartDashboard.putNumber("Arm Velocity ", arm_encoder.getVelocity());
+    if (m_rightStick.getY() > 0.05 || (m_rightStick.getY() < -0.05)) {
+      try {
+        m_arm.setIdleMode(IdleMode.kCoast);
+      } catch (Exception e) {
+        DriverStation.reportError("Error in coast mode", true);
+      }
+      m_arm.set(-m_rightStick.getY());
+    } else {
+      m_arm.set(0);
+      try {
+        m_arm.setIdleMode(IdleMode.kBrake);
+      } catch (Exception e) {
+        DriverStation.reportError("Error in brake mode", true);
+      }
+      // m_arm.set(m_rightStick.getY());
+      m_myRobot.arcadeDrive(-m_leftStick.getY(), m_leftStick.getX());
+      SmartDashboard.putNumber("Arm Position", arm_encoder.getPosition());
+      SmartDashboard.putNumber("Grabber Position", grabber_encoder.getPosition());
+      SmartDashboard.putNumber("Arm Velocity ", arm_encoder.getVelocity());
+
+    }
 
   }
 }
