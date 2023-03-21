@@ -199,7 +199,7 @@ public class Robot extends TimedRobot {
     // }
 
     // grabber close
-    if (grabber_encoder.getPosition() > -100 && m_rightStick.getRawButton(3)) {
+    if (arm_encoder.getPosition() > 35 && grabber_encoder.getPosition() > -100 && m_rightStick.getRawButton(3)) {
       try {
         m_grabber.setIdleMode(IdleMode.kCoast);
       } catch (Exception e) {
@@ -208,7 +208,7 @@ public class Robot extends TimedRobot {
       m_grabber.set(-0.4);
     }
     // grabber open
-    else if (grabber_encoder.getPosition() < 2 && m_rightStick.getRawButton(5)) {
+    else if (arm_encoder.getPosition() > 35 && grabber_encoder.getPosition() < 2 && m_rightStick.getRawButton(5)) {
       try {
         m_grabber.setIdleMode(IdleMode.kCoast);
       } catch (Exception e) {
@@ -224,13 +224,19 @@ public class Robot extends TimedRobot {
       }
     }
 
+    // Arm movement
     if (m_rightStick.getY() > 0.05 || (m_rightStick.getY() < -0.05)) {
       try {
         m_arm.setIdleMode(IdleMode.kCoast);
       } catch (Exception e) {
         DriverStation.reportError("Error in coast mode", true);
       }
-      m_arm.set(-m_rightStick.getY());
+
+      // arm limits
+      if (arm_encoder.getPosition() > 10 && m_rightStick.getY() < -0.05)
+        m_arm.set(m_rightStick.getY());
+      else if (arm_encoder.getPosition() < 206 && m_rightStick.getY() > 0.05)
+        m_arm.set(m_rightStick.getY());
     } else {
       m_arm.set(0);
       try {
