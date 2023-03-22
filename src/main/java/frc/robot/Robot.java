@@ -54,6 +54,9 @@ public class Robot extends TimedRobot {
 
   private final Timer m_timer = new Timer();
 
+  private final int grabberCubeLim = -12;
+  private final int grabberConeLim = 1;
+
   @Override
   public void robotInit() {
     // Left side drive train motor group
@@ -110,7 +113,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-    // m_timer.reset();
+    // m_timer.Preset();
     // m_timer.start();
     m_timer.reset();
     hasStartedGyro = false;
@@ -119,18 +122,19 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {
     // m_timer.start();
-    // if (m_timer.get() < 4) {
+    // if (m_timer.get() <2.7) {
     // m_myRobot2.driveCartesian(0.4, 0, -0.08);
     // }
+
     double xAxisRate = 0;
     double yAxisRate = 0;
     double rollAngleDegrees = ahrs.getPitch();
     double pitchAngleDegrees = ahrs.getRoll();
-    if (m_timer.get() > 1) {
+    if (m_timer.get() > 1.3) {
       hasStartedGyro = true;
     }
     if (!hasStartedGyro) {
-      m_myRobot2.driveCartesian(0.75, 0, -0.08);
+      m_myRobot2.driveCartesian(0.4, 0, -0.08);
       if (pitchAngleDegrees >= 12) {
         m_timer.start();
       }
@@ -182,22 +186,30 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     // grabber open
-    if (arm_encoder.getPosition() > 35 && grabber_encoder.getPosition() > -100 && m_rightStick.getRawButton(3)) {
+    if (arm_encoder.getPosition() > 35 && grabber_encoder.getPosition() > -100 && m_rightStick.getTrigger()) {
       try {
         m_grabber.setIdleMode(IdleMode.kCoast);
       } catch (Exception e) {
         DriverStation.reportError("Error in coast mode", true);
       }
-      m_grabber.set(-0.4);
+      m_grabber.set(-0.8);
     }
     // grabber close
-    else if (grabber_encoder.getPosition() < 1 && m_rightStick.getRawButton(5)) {
+    else if (grabber_encoder.getPosition() < grabberConeLim
+        && (m_rightStick.getRawButton(5) || m_rightStick.getRawButton(3))) {
       try {
         m_grabber.setIdleMode(IdleMode.kCoast);
       } catch (Exception e) {
         DriverStation.reportError("Error in coast mode", true);
       }
-      m_grabber.set(0.4);
+      m_grabber.set(0.8);
+    } else if (grabber_encoder.getPosition() < grabberCubeLim && m_rightStick.getRawButton(2)) {
+      try {
+        m_grabber.setIdleMode(IdleMode.kCoast);
+      } catch (Exception e) {
+        DriverStation.reportError("Error in coast mode", true);
+      }
+      m_grabber.set(0.8);
     } else {
       m_grabber.set(0);
       try {
@@ -217,9 +229,9 @@ public class Robot extends TimedRobot {
 
       // arm limits
       if (arm_encoder.getPosition() > 13 && m_rightStick.getY() > 0.05)
-        m_arm.set(-m_rightStick.getY());
+        m_arm.set(-m_rightStick.getY() * 1.1);
       else if (arm_encoder.getPosition() < 209 && m_rightStick.getY() < -0.05)
-        m_arm.set(-m_rightStick.getY());
+        m_arm.set(-m_rightStick.getY() * 1.1);
       else {
         m_arm.set(0);
         try {
@@ -239,9 +251,15 @@ public class Robot extends TimedRobot {
     }
     SmartDashboard.putNumber("Arm Position", arm_encoder.getPosition());
     SmartDashboard.putNumber("Grabber Position", grabber_encoder.getPosition());
-    SmartDashboard.putNumber("right joystick", m_rightStick.getY());
 
-    m_myRobot.arcadeDrive(-m_leftStick.getY(), m_leftStick.getX());
+    // drive train
+    if (!m_leftStick.getTrigger()) {
+      m_myRobot.arcadeDrive(-m_leftStick.getY(), m_leftStick.getX());
+    } else if (m_leftStick.getTrigger()) {
+      m_myRobot.arcadeDrive(-m_leftStick.getY() * 1.5, m_leftStick.getX() * 1.5);
+    }
+    SmartDashboard.putNumber("right joystick", m_rightStick.getY());
+    SmartDashboard.putNumber("right joystick X", m_rightStick.getX());
 
     // COMMENT OUT -- TRYING TO WRITE STRAIGHT DRIVE
     // SET m_myRobot to Mecanum Drive
