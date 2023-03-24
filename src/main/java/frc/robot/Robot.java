@@ -64,13 +64,12 @@ public class Robot extends TimedRobot {
 
   // LIMIT CONSTANTS
   private final int grabberCubeLim = -12;
-  private final int grabberConeLim = 0;
-  private final int armAutoLim = 135;
+  private final int grabberConeLim = 2;
+  private final int armAutoLim = 145;
 
   // AUTONOMOUS TIME USAGE VARIABLES
   private int autoGrabberVar = 0;
   private int autoArmVar = 0;
-  private boolean coneDropped = false;
 
   // sets "motor" To brake mode, will hold position when stopped but cannot be
   // driven
@@ -157,7 +156,7 @@ public class Robot extends TimedRobot {
 
     arm_encoder.setPosition(0);
     grabber_encoder.setPosition(0);
-
+  
     // Gyro
     try {
       ahrs = new AHRS(SPI.Port.kMXP);
@@ -183,32 +182,22 @@ public class Robot extends TimedRobot {
     autoArmVar = 0;
     hasStarted = false;
     inRange = false;
+    autoBalanceXMode = false;
+    autoBalanceYMode = false;
   }
 
   // runs periodically during autonomous
   @Override
   public void autonomousPeriodic() {
-    // autoShortTaxi();
-    // autoLongTaxi();
+    autoTaxi();
     // autoMiddleNoBalance();
     // autoMiddleBalance();
-    autonomousGyro();
-
+    // autonomousGyro();
+    // autonomousConeScore();
   }
 
   // autonomous short taxi side
-  public void autoShortTaxi() {
-    if (autoArmVar == 0 || autoArmVar == 1)
-      autonomousConeScore();
-    else if (autoArmVar == 2 || coneDropped == true)
-      autonomousRotate(180, 5);
-    else if (autoArmVar == 3) {
-      autonomousTaxiF();
-    }
-  }
-
-  // autonomous long taxi side
-  public void autoLongTaxi() {
+  public void autoTaxi() {
     if (autoArmVar == 0 || autoArmVar == 1)
       autonomousConeScore();
     else if (autoArmVar == 2)
@@ -234,10 +223,10 @@ public class Robot extends TimedRobot {
     // cone score
     // arm open
     if (arm_encoder.getPosition() < armAutoLim && autoArmVar == 0) {
-      m_arm.set(0.9);
-      if (arm_encoder.getPosition() < 25) {
+      m_arm.set(0.75);
+      if (arm_encoder.getPosition() < 5) {
         setCoast(m_grabber);
-        m_grabber.set(0.3);
+        m_grabber.set(0.2);
       } else {
         setBrake(m_grabber);
       }
@@ -250,15 +239,14 @@ public class Robot extends TimedRobot {
         setBrake(m_arm);
       }
 
-      if (grabber_encoder.getPosition() > -40 && autoGrabberVar == 0) {
+      if (grabber_encoder.getPosition() > -35 && autoGrabberVar == 0) {
         setCoast(m_grabber);
-        m_grabber.set(-0.3);
+        m_grabber.set(-0.45);
       } else if (autoGrabberVar == 0) {
         m_grabber.set(0);
         autoGrabberVar = 1;
       } else if (grabber_encoder.getPosition() < grabberConeLim && autoGrabberVar == 1) {
-        m_grabber.set(0.3);
-        coneDropped = true;
+        m_grabber.set(0.45);
         // setCoast(m_arm);
         // m_arm.set(-0.8);
       } else {
@@ -270,7 +258,7 @@ public class Robot extends TimedRobot {
     }
     // arm close
     else if (arm_encoder.getPosition() > 16 && autoArmVar == 1) {
-      m_arm.set(-0.8);
+      m_arm.set(-0.75);
     }
     // finish with all in brake
     else {
@@ -296,23 +284,27 @@ public class Robot extends TimedRobot {
     }
   }
 
-  // Helper function to get bot to ballance on charge station
+  // Helper function to get bot to balance on charge station
   public void autonomousGyro() {
+    setCoast(m_leftMotor1);
+    setCoast(m_leftMotor2);
+    setCoast(m_rightMotor1);
+    setCoast(m_rightMotor2);
 
     double xAxisRate = 0;
     double yAxisRate = 0;
     double rollAngleDegrees = ahrs.getPitch();
-    double pitchAngleDegrees = ahrs.getRoll() - 2;
-    if (m_timer.get() > 1.05) {
-      hasStartedGyro = true;
-    }
+    double pitchAngleDegrees = ahrs.getRoll();
     if (!hasStartedGyro) {
       m_myRobot2.driveCartesian(-0.5, 0, 0);
-      if (pitchAngleDegrees <= -5) {
+      if (pitchAngleDegrees <= -12) {
         m_timer.start();
       }
-
-    } else {
+    } 
+    if (m_timer.get() > 1) {
+      hasStartedGyro = true;
+    }
+    else {
       if (!autoBalanceXMode && (Math.abs(pitchAngleDegrees) >= Math.abs(kOffBalanceAngleThresholdDegrees))) {
         autoBalanceXMode = true;
       } else if (autoBalanceXMode && (Math.abs(pitchAngleDegrees) <= Math.abs(kOonBalanceAngleThresholdDegrees))) {
@@ -332,10 +324,12 @@ public class Robot extends TimedRobot {
         double rollAngleRadians = rollAngleDegrees * (Math.PI / 180.0);
         yAxisRate = Math.sin(rollAngleRadians) * -1;
       }
+      if (xAxisRate > -0.05 && xAxisRate < 0.05) {
+        xAxisRate = 0;
+      }
 
       try {
-        m_myRobot2.driveCartesian(xAxisRate * 2, 0, 0,
-            ahrs.getRotation2d());
+        m_myRobot2.driveCartesian(-xAxisRate * 1.5, 0, 0);
       } catch (RuntimeException ex) {
         String err_string = "Drive system error: " + ex.getMessage();
         DriverStation.reportError(err_string, true);
@@ -343,6 +337,7 @@ public class Robot extends TimedRobot {
 
     }
     SmartDashboard.putNumber("X", ahrs.getRoll());
+    SmartDashboard.putNumber("Y", xAxisRate);
     // SmartDashboard.putNumber("angle", );
   }
 
@@ -398,6 +393,8 @@ public class Robot extends TimedRobot {
   // runs once when teleop starts
   @Override
   public void teleopInit() {
+    arm_encoder.setPosition(0);
+    grabber_encoder.setPosition(0);
     setCoast(m_leftMotor1);
     setCoast(m_leftMotor2);
     setCoast(m_rightMotor1);
