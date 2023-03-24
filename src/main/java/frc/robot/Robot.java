@@ -142,8 +142,8 @@ public class Robot extends TimedRobot {
     m_grabber.restoreFactoryDefaults();
 
     // Inversions as neccessary
-    m_rightMotor1.setInverted(true);
-    m_rightMotor2.setInverted(true);
+    m_leftMotor1.setInverted(true);
+    m_leftMotor2.setInverted(true);
 
     // Setting drive train
     m_myRobot = new DifferentialDrive(m_left, m_right);
@@ -188,15 +188,12 @@ public class Robot extends TimedRobot {
   // runs periodically during autonomous
   @Override
   public void autonomousPeriodic() {
-    // m_timer.start();
-    // if (m_timer.get() <2.7) {
-    // m_myRobot2.driveCartesian(0.4, 0, -0.08);
-    // }
-
     // autoShortTaxi();
     // autoLongTaxi();
     // autoMiddleNoBalance();
-    autoMiddleBalance();
+    // autoMiddleBalance();
+    autonomousGyro();
+
   }
 
   // autonomous short taxi side
@@ -227,11 +224,9 @@ public class Robot extends TimedRobot {
   public void autoMiddleBalance() {
     if (autoArmVar == 0 || autoArmVar == 1)
       autonomousConeScore();
-    else if (autoArmVar == 2)
+    else if (autoArmVar == 2) {
       autonomousGyro();
-    // autonomousRotate(180, 5);
-    // else if (autoArmVar == 3)
-    // autonomousGyro();
+    }
   }
 
   // helper function to score cone
@@ -307,13 +302,13 @@ public class Robot extends TimedRobot {
     double xAxisRate = 0;
     double yAxisRate = 0;
     double rollAngleDegrees = ahrs.getPitch();
-    double pitchAngleDegrees = ahrs.getRoll();
-    if (m_timer.get() > 1.1) {
+    double pitchAngleDegrees = ahrs.getRoll() - 2;
+    if (m_timer.get() > 1.05) {
       hasStartedGyro = true;
     }
     if (!hasStartedGyro) {
       m_myRobot2.driveCartesian(-0.5, 0, 0);
-      if (pitchAngleDegrees >= 12) {
+      if (pitchAngleDegrees <= -5) {
         m_timer.start();
       }
 
@@ -339,7 +334,7 @@ public class Robot extends TimedRobot {
       }
 
       try {
-        m_myRobot2.driveCartesian(xAxisRate * 1.5, 0, -0.08,
+        m_myRobot2.driveCartesian(xAxisRate * 2, 0, 0,
             ahrs.getRotation2d());
       } catch (RuntimeException ex) {
         String err_string = "Drive system error: " + ex.getMessage();
@@ -347,8 +342,8 @@ public class Robot extends TimedRobot {
       }
 
     }
-    SmartDashboard.putNumber("X", m_timer.get());
-    SmartDashboard.putNumber("angle", pitchAngleDegrees);
+    SmartDashboard.putNumber("X", ahrs.getRoll());
+    // SmartDashboard.putNumber("angle", );
   }
 
   // Helper function to rotate bot Theta degrees
